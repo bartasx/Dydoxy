@@ -1,0 +1,113 @@
+@page "/login"
+@using MudBlazor
+@layout EmptyLayout
+
+<PageTitle>Login - Dydoxy</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Small" Class="d-flex align-center justify-center" Style="height: 100vh;">
+    <MudCard Elevation="8" Style="width: 100%; max-width: 400px;">
+        <MudCardHeader>
+            <CardHeaderContent>
+                <MudText Typo="Typo.h4" Align="Align.Center">Dydoxy</MudText>
+                <MudText Typo="Typo.body2" Align="Align.Center" Color="Color.TextSecondary">
+                    Proxy Management Platform
+                </MudText>
+            </CardHeaderContent>
+        </MudCardHeader>
+        <MudCardContent>
+            <EditForm Model="@_loginModel" OnValidSubmit="HandleLogin">
+                <DataAnnotationsValidator />
+                
+                <MudTextField @bind-Value="_loginModel.Email"
+                              Label="Email"
+                              Variant="Variant.Outlined"
+                              InputType="InputType.Email"
+                              Required="true"
+                              Class="mb-4" />
+                
+                <MudTextField @bind-Value="_loginModel.Password"
+                              Label="Password"
+                              Variant="Variant.Outlined"
+                              InputType="InputType.Password"
+                              Required="true"
+                              Class="mb-4" />
+                
+                <MudButton ButtonType="ButtonType.Submit"
+                           Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           FullWidth="true"
+                           Size="Size.Large"
+                           Class="mb-3"
+                           Disabled="@_isLoading">
+                    @if (_isLoading)
+                    {
+                        <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+                        <MudText Class="ml-2">Signing in...</MudText>
+                    }
+                    else
+                    {
+                        <MudText>Sign In</MudText>
+                    }
+                </MudButton>
+            </EditForm>
+            
+            @if (!string.IsNullOrEmpty(_errorMessage))
+            {
+                <MudAlert Severity="Severity.Error" Class="mt-3">
+                    @_errorMessage
+                </MudAlert>
+            }
+        </MudCardContent>
+    </MudCard>
+</MudContainer>
+
+@code {
+    private LoginModel _loginModel = new();
+    private bool _isLoading = false;
+    private string _errorMessage = "";
+
+    private async Task HandleLogin()
+    {
+        _isLoading = true;
+        _errorMessage = "";
+
+        try
+        {
+            // Mock authentication - replace with actual service call
+            if (_loginModel.Email == "admin@test.com" && _loginModel.Password == "password")
+            {
+                // Redirect to dashboard on successful login
+                // NavigationManager.NavigateTo("/");
+            }
+            else
+            {
+                _errorMessage = "Invalid email or password";
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = "An error occurred during login";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    public class LoginModel
+    {
+        public string Email { get; set; } = "";
+        public string Password { get; set; } = "";
+    }
+}
+
+@* Empty layout for login page *@
+@code {
+    public class EmptyLayout : LayoutView
+    {
+        protected override void BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder builder)
+        {
+            builder.AddContent(0, Body);
+        }
+    }
+}

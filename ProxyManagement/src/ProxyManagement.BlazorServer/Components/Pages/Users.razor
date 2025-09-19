@@ -1,0 +1,124 @@
+@page "/users"
+@using MudBlazor
+
+<PageTitle>Users - Dydoxy</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge">
+    <MudGrid>
+        <MudItem xs="12">
+            <MudCard Elevation="4">
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h5">User Management</MudText>
+                    </CardHeaderContent>
+                    <CardHeaderActions>
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="Icons.Material.Filled.Add" OnClick="OpenAddUserDialog">
+                            Add User
+                        </MudButton>
+                    </CardHeaderActions>
+                </MudCardHeader>
+                <MudCardContent>
+                    <MudTable Items="@_users" Hover="true" Breakpoint="Breakpoint.Sm" Loading="@_loading">
+                        <HeaderContent>
+                            <MudTh>Email</MudTh>
+                            <MudTh>Role</MudTh>
+                            <MudTh>Organization</MudTh>
+                            <MudTh>Status</MudTh>
+                            <MudTh>Created</MudTh>
+                            <MudTh>Actions</MudTh>
+                        </HeaderContent>
+                        <RowTemplate>
+                            <MudTd DataLabel="Email">@context.Email</MudTd>
+                            <MudTd DataLabel="Role">
+                                <MudChip Color="@GetRoleColor(context.Role)" Size="Size.Small">@context.Role</MudChip>
+                            </MudTd>
+                            <MudTd DataLabel="Organization">@context.OrganizationName</MudTd>
+                            <MudTd DataLabel="Status">
+                                <MudChip Color="@(context.IsActive ? Color.Success : Color.Error)" Size="Size.Small">
+                                    @(context.IsActive ? "Active" : "Inactive")
+                                </MudChip>
+                            </MudTd>
+                            <MudTd DataLabel="Created">@context.CreatedAt.ToString("MMM dd, yyyy")</MudTd>
+                            <MudTd DataLabel="Actions">
+                                <MudIconButton Icon="Icons.Material.Filled.Edit" Size="Size.Small" OnClick="() => EditUser(context)" />
+                                <MudIconButton Icon="Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="() => DeleteUser(context)" />
+                            </MudTd>
+                        </RowTemplate>
+                    </MudTable>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+    </MudGrid>
+</MudContainer>
+
+@code {
+    private bool _loading = false;
+    private List<UserViewModel> _users = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadUsers();
+    }
+
+    private async Task LoadUsers()
+    {
+        _loading = true;
+        
+        // Mock data - replace with actual service call
+        _users = new List<UserViewModel>
+        {
+            new UserViewModel
+            {
+                Id = Guid.NewGuid(),
+                Email = "admin@test.com",
+                Role = "Admin",
+                OrganizationName = "Test Organization",
+                IsActive = true,
+                CreatedAt = DateTimeOffset.Now.AddDays(-30)
+            },
+            new UserViewModel
+            {
+                Id = Guid.NewGuid(),
+                Email = "user@test.com",
+                Role = "User",
+                OrganizationName = "Test Organization",
+                IsActive = true,
+                CreatedAt = DateTimeOffset.Now.AddDays(-15)
+            }
+        };
+        
+        _loading = false;
+    }
+
+    private Color GetRoleColor(string role) => role.ToLower() switch
+    {
+        "admin" => Color.Error,
+        "user" => Color.Primary,
+        _ => Color.Default
+    };
+
+    private void OpenAddUserDialog()
+    {
+        // Implementation for add user dialog
+    }
+
+    private void EditUser(UserViewModel user)
+    {
+        // Implementation for edit user
+    }
+
+    private void DeleteUser(UserViewModel user)
+    {
+        // Implementation for delete user
+    }
+
+    public class UserViewModel
+    {
+        public Guid Id { get; set; }
+        public string Email { get; set; } = "";
+        public string Role { get; set; } = "";
+        public string OrganizationName { get; set; } = "";
+        public bool IsActive { get; set; }
+        public DateTimeOffset CreatedAt { get; set; }
+    }
+}

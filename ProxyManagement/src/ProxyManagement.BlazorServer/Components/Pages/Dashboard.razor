@@ -1,0 +1,134 @@
+@page "/"
+@using MudBlazor
+@inject IJSRuntime JSRuntime
+
+<PageTitle>Dashboard - Dydoxy</PageTitle>
+
+<MudGrid>
+    <MudItem xs="12" sm="6" md="3">
+        <MudCard Elevation="4">
+            <MudCardContent>
+                <div class="d-flex align-center">
+                    <MudIcon Icon="Icons.Material.Filled.Globe" Color="Color.Primary" Size="Size.Large" />
+                    <div class="ml-4">
+                        <MudText Typo="Typo.h4">@_activeConnections</MudText>
+                        <MudText Typo="Typo.body2" Color="Color.TextSecondary">Active Connections</MudText>
+                    </div>
+                </div>
+            </MudCardContent>
+        </MudCard>
+    </MudItem>
+    
+    <MudItem xs="12" sm="6" md="3">
+        <MudCard Elevation="4">
+            <MudCardContent>
+                <div class="d-flex align-center">
+                    <MudIcon Icon="Icons.Material.Filled.Download" Color="Color.Success" Size="Size.Large" />
+                    <div class="ml-4">
+                        <MudText Typo="Typo.h4">@_bandwidthUsed</MudText>
+                        <MudText Typo="Typo.body2" Color="Color.TextSecondary">Bandwidth Used</MudText>
+                    </div>
+                </div>
+            </MudCardContent>
+        </MudCard>
+    </MudItem>
+    
+    <MudItem xs="12" sm="6" md="3">
+        <MudCard Elevation="4">
+            <MudCardContent>
+                <div class="d-flex align-center">
+                    <MudIcon Icon="Icons.Material.Filled.Shield" Color="Color.Warning" Size="Size.Large" />
+                    <div class="ml-4">
+                        <MudText Typo="Typo.h4">@_threatsBlocked</MudText>
+                        <MudText Typo="Typo.body2" Color="Color.TextSecondary">Threats Blocked</MudText>
+                    </div>
+                </div>
+            </MudCardContent>
+        </MudCard>
+    </MudItem>
+    
+    <MudItem xs="12" sm="6" md="3">
+        <MudCard Elevation="4">
+            <MudCardContent>
+                <div class="d-flex align-center">
+                    <MudIcon Icon="Icons.Material.Filled.Storage" Color="Color.Info" Size="Size.Large" />
+                    <div class="ml-4">
+                        <MudText Typo="Typo.h4">@_activeServers</MudText>
+                        <MudText Typo="Typo.body2" Color="Color.TextSecondary">Proxy Servers</MudText>
+                    </div>
+                </div>
+            </MudCardContent>
+        </MudCard>
+    </MudItem>
+</MudGrid>
+
+<MudGrid Class="mt-4">
+    <MudItem xs="12" md="8">
+        <MudCard Elevation="4">
+            <MudCardHeader>
+                <CardHeaderContent>
+                    <MudText Typo="Typo.h6">Traffic Analytics - Last 24 Hours</MudText>
+                </CardHeaderContent>
+            </MudCardHeader>
+            <MudCardContent>
+                <div id="trafficChart" style="height: 300px;"></div>
+            </MudCardContent>
+        </MudCard>
+    </MudItem>
+    
+    <MudItem xs="12" md="4">
+        <MudCard Elevation="4">
+            <MudCardHeader>
+                <CardHeaderContent>
+                    <MudText Typo="Typo.h6">Live Alerts</MudText>
+                </CardHeaderContent>
+            </MudCardHeader>
+            <MudCardContent>
+                @if (_alerts.Any())
+                {
+                    @foreach (var alert in _alerts.Take(5))
+                    {
+                        <MudAlert Severity="@GetSeverity(alert.Severity)" Class="mb-2">
+                            <strong>@alert.Title</strong><br />
+                            @alert.Message
+                            <MudText Typo="Typo.caption" Class="mt-1">@alert.Timestamp.ToString("HH:mm:ss")</MudText>
+                        </MudAlert>
+                    }
+                }
+                else
+                {
+                    <MudText Color="Color.TextSecondary">No active alerts</MudText>
+                }
+            </MudCardContent>
+        </MudCard>
+    </MudItem>
+</MudGrid>
+
+@code {
+    private int _activeConnections = 1247;
+    private string _bandwidthUsed = "524 MB";
+    private int _threatsBlocked = 23;
+    private int _activeServers = 5;
+    
+    private List<Alert> _alerts = new()
+    {
+        new Alert { Title = "High CPU Usage", Message = "Server load at 85%", Severity = "warning", Timestamp = DateTime.Now.AddMinutes(-5) },
+        new Alert { Title = "New User Registered", Message = "user@example.com joined", Severity = "info", Timestamp = DateTime.Now.AddMinutes(-10) }
+    };
+
+    private Severity GetSeverity(string severity) => severity.ToLower() switch
+    {
+        "error" => Severity.Error,
+        "warning" => Severity.Warning,
+        "info" => Severity.Info,
+        _ => Severity.Normal
+    };
+
+    public class Alert
+    {
+        public string Title { get; set; } = "";
+        public string Message { get; set; } = "";
+        public string Severity { get; set; } = "info";
+        public DateTime Timestamp { get; set; }
+    }
+}

@@ -1,0 +1,303 @@
+@* ==================== DASHBOARD OVERVIEW COMPONENT ==================== *@
+@page "/dashboard"
+@using Microsoft.AspNetCore.SignalR.Client
+@using ProxyManagement.Core.DTOs
+@inject IJSRuntime JSRuntime
+@inject ILogger<DashboardOverview> Logger
+@implements IAsyncDisposable
+
+<PageTitle>Proxy Management Dashboard</PageTitle>
+
+<div class="dashboard-container">
+    <div class="row">
+        <div class="col-md-3">
+            <div class="stat-card bg-primary">
+                <div class="stat-icon">
+                    <i class="fas fa-globe"></i>
+                </div>
+                <div class="stat-content">
+                    <h3>@totalConnections</h3>
+                    <p>Active Connections</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card bg-success">
+                <div class="stat-icon">
+                    <i class="fas fa-download"></i>
+                </div>
+                <div class="stat-content">
+                    <h3>@FormatBytes(totalBandwidth)</h3>
+                    <p>Bandwidth Used</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card bg-warning">
+                <div class="stat-icon">
+                    <i class="fas fa-shield-alt"></i>
+                </div>
+                <div class="stat-content">
+                    <h3>@threatsBlocked</h3>
+                    <p>Threats Blocked</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card bg-info">
+                <div class="stat-icon">
+                    <i class="fas fa-server"></i>
+                </div>
+                <div class="stat-content">
+                    <h3>@activeServers</h3>
+                    <p>Proxy Servers</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-4">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5>Traffic Analytics - Last 24 Hours</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="trafficChart" height="300"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5>Live Alerts</h5>
+                </div>
+                <div class="card-body">
+                    @if (liveAlerts.Any())
+                    {
+                        @foreach (var alert in liveAlerts.Take(5))
+                        {
+                            <div class="alert alert-@GetAlertClass(alert.Severity) alert-dismissible fade show">
+                                <strong>@alert.Title</strong><br>
+                                @alert.Message
+                                <small class="text-muted d-block">@alert.Timestamp.ToString("HH:mm:ss")</small>
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <p class="text-muted">No active alerts</p>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5>Proxy Server Status</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Server</th>
+                                    <th>Status</th>
+                                    <th>Load</th>
+                                    <th>Connections</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var server in proxyServers)
+                                {
+                                    <tr>
+                                        <td>@server.Name</td>
+                                        <td>
+                                            <span class="badge bg-@(server.IsHealthy ? "success" : "danger")">
+                                                @(server.IsHealthy ? "Online" : "Offline")
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <div class="progress" style="height: 10px;">
+                                                <div class="progress-bar" style="width: @(server.CpuUsage)%"></div>
+                                            </div>
+                                        </td>
+                                        <td>@server.ActiveConnections</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5>Modem Status</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Modem</th>
+                                    <th>Signal</th>
+                                    <th>Network</th>
+                                    <th>Data Used</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var modem in modemStatus)
+                                {
+                                    <tr>
+                                        <td>@modem.Name</td>
+                                        <td>
+                                            <span class="text-@GetSignalClass(modem.SignalStrength)">
+                                                @modem.SignalStrength dBm
+                                            </span>
+                                        </td>
+                                        <td>@modem.NetworkType</td>
+                                        <td>@FormatBytes(modem.DataUsed)</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private HubConnection? hubConnection;
+    private int totalConnections = 0;
+    private long totalBandwidth = 0;
+    private int threatsBlocked = 0;
+    private int activeServers = 0;
+    
+    private List<AlertDto> liveAlerts = new();
+    private List<ProxyServerDto> proxyServers = new();
+    private List<ModemStatusDto> modemStatus = new();
+    private List<TrafficDataPoint> trafficData = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Initialize SignalR connection
+        hubConnection = new HubConnectionBuilder()
+            .WithUrl(NavigationManager.ToAbsoluteUri("/dashboardHub"))
+            .Build();
+
+        // Register event handlers
+        hubConnection.On<DashboardStatsDto>("UpdateStats", UpdateDashboardStats);
+        hubConnection.On<AlertDto>("NewAlert", AddAlert);
+        hubConnection.On<List<ProxyServerDto>>("UpdateServers", UpdateServers);
+        hubConnection.On<List<ModemStatusDto>>("UpdateModems", UpdateModems);
+        hubConnection.On<TrafficDataPoint>("TrafficUpdate", UpdateTrafficChart);
+
+        await hubConnection.StartAsync();
+        
+        // Load initial data
+        await LoadInitialData();
+    }
+
+    private async Task LoadInitialData()
+    {
+        try
+        {
+            // Simulate API calls to get initial data
+            totalConnections = 1247;
+            totalBandwidth = 524288000; // 500MB
+            threatsBlocked = 23;
+            activeServers = 5;
+            
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading initial dashboard data");
+        }
+    }
+
+    private async Task UpdateDashboardStats(DashboardStatsDto stats)
+    {
+        totalConnections = stats.TotalConnections;
+        totalBandwidth = stats.TotalBandwidth;
+        threatsBlocked = stats.ThreatsBlocked;
+        activeServers = stats.ActiveServers;
+        
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task AddAlert(AlertDto alert)
+    {
+        liveAlerts.Insert(0, alert);
+        if (liveAlerts.Count > 10)
+            liveAlerts.RemoveAt(10);
+            
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task UpdateServers(List<ProxyServerDto> servers)
+    {
+        proxyServers = servers;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task UpdateModems(List<ModemStatusDto> modems)
+    {
+        modemStatus = modems;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task UpdateTrafficChart(TrafficDataPoint dataPoint)
+    {
+        trafficData.Add(dataPoint);
+        if (trafficData.Count > 288) // Keep 24 hours of 5-minute intervals
+            trafficData.RemoveAt(0);
+            
+        await JSRuntime.InvokeVoidAsync("updateTrafficChart", trafficData);
+    }
+
+    private string GetAlertClass(string severity) => severity.ToLower() switch
+    {
+        "critical" => "danger",
+        "warning" => "warning",
+        "info" => "info",
+        _ => "secondary"
+    };
+
+    private string GetSignalClass(int signalStrength) => signalStrength switch
+    {
+        > -70 => "success",
+        > -85 => "warning",
+        _ => "danger"
+    };
+
+    private string FormatBytes(long bytes)
+    {
+        string[] suffixes = { "B", "KB", "MB", "GB", "TB" };
+        int counter = 0;
+        decimal number = bytes;
+        while (Math.Round(number / 1024) >= 1)
+        {
+            number /= 1024;
+            counter++;
+        }
+        return $"{number:n1} {suffixes[counter]}";
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (hubConnection is not null)
+        {
+            await hubConnection.DisposeAsync();
+        }
+    }
+}
+
+@* 

@@ -1,0 +1,43 @@
+@using MudBlazor
+
+<MudNavMenu>
+    <MudNavLink Href="/" Match="NavLinkMatch.All" Icon="Icons.Material.Filled.Dashboard">
+        Dashboard
+    </MudNavLink>
+    
+    <MudNavGroup Text="Proxy Management" Icon="Icons.Material.Filled.Router" Expanded="true">
+        <MudNavLink Href="/proxy/servers" Icon="Icons.Material.Filled.Storage">
+            Proxy Servers
+        </MudNavLink>
+        <MudNavLink Href="/proxy/modems" Icon="Icons.Material.Filled.Wifi">
+            Modems
+        </MudNavLink>
+        <MudNavLink Href="/proxy/chains" Icon="Icons.Material.Filled.Link">
+            Proxy Chains
+        </MudNavLink>
+    </MudNavGroup>
+    
+    <MudNavGroup Text="Security" Icon="Icons.Material.Filled.Security">
+        <MudNavLink Href="/security/threats" Icon="Icons.Material.Filled.Warning">
+            Threat Detection
+        </MudNavLink>
+        <MudNavLink Href="/security/policies" Icon="Icons.Material.Filled.Policy">
+            Security Policies
+        </MudNavLink>
+        <MudNavLink Href="/security/audit" Icon="Icons.Material.Filled.History">
+            Audit Logs
+        </MudNavLink>
+    </MudNavGroup>
+    
+    <MudNavLink Href="/analytics" Icon="Icons.Material.Filled.Analytics">
+        Analytics
+    </MudNavLink>
+    
+    <MudNavLink Href="/users" Icon="Icons.Material.Filled.People">
+        Users
+    </MudNavLink>
+    
+    <MudNavLink Href="/billing" Icon="Icons.Material.Filled.Payment">
+        Billing
+    </MudNavLink>
+</MudNavMenu>

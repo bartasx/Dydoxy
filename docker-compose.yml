@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: dydoxy
+      POSTGRES_USER: dydoxy
+      POSTGRES_PASSWORD: dydoxy123
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+
+  proxy-core:
+    build:
+      context: ./proxy-engine-go
+      dockerfile: Dockerfile
+    ports:
+      - "1080:1080"  # SOCKS5
+      - "8080:8080"  # HTTP Proxy
+      - "9090:9090"  # API
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=dydoxy
+      - DB_PASSWORD=dydoxy123
+      - DB_NAME=dydoxy
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    depends_on:
+      - postgres
+      - redis
+
+volumes:
+  postgres_data:
+  redis_data:

@@ -1,0 +1,44 @@
+syntax = "proto3";
+
+package proxy;
+
+option go_package = "github.com/dydoxy/proxy-engine-go/api/grpc/proxy";
+
+service ProxyService {
+  rpc GetServerStatus(ServerStatusRequest) returns (ServerStatusResponse);
+  rpc GetUserStats(UserStatsRequest) returns (UserStatsResponse);
+  rpc RotateIP(RotateIPRequest) returns (RotateIPResponse);
+}
+
+message ServerStatusRequest {
+  string server_id = 1;
+}
+
+message ServerStatusResponse {
+  string server_id = 1;
+  string status = 2;
+  int32 active_connections = 3;
+  int64 bytes_transferred = 4;
+}
+
+message UserStatsRequest {
+  string user_id = 1;
+}
+
+message UserStatsResponse {
+  string user_id = 1;
+  int64 bytes_up = 2;
+  int64 bytes_down = 3;
+  int32 requests = 4;
+}
+
+message RotateIPRequest {
+  string modem_id = 1;
+}
+
+message RotateIPResponse {
+  bool success = 1;
+  string old_ip = 2;
+  string new_ip = 3;
+  string error = 4;
+}

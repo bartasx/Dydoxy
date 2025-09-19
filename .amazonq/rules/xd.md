@@ -1,0 +1,1 @@
+Zawsze stosuj sie do plikow w folderze docs!!!
