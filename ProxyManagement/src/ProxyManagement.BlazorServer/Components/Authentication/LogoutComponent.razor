@@ -1,0 +1,53 @@
+@using ProxyManagement.BlazorServer.Services.Authentication
+@inject IAuthenticationService AuthenticationService
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+
+<MudButton Variant="Variant.Text"
+           Color="Color.Inherit"
+           StartIcon="Icons.Material.Filled.Logout"
+           OnClick="@HandleLogout"
+           Disabled="@_isLoading">
+    @if (_isLoading)
+    {
+        <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+    }
+    else
+    {
+        <span>Logout</span>
+    }
+</MudButton>
+
+@code {
+    private bool _isLoading = false;
+
+    private async Task HandleLogout()
+    {
+        _isLoading = true;
+        StateHasChanged();
+
+        try
+        {
+            var result = await AuthenticationService.LogoutAsync();
+            
+            if (result.IsSuccess)
+            {
+                Snackbar.Add("Logged out successfully", Severity.Info);
+                Navigation.NavigateTo("/login", forceLoad: true);
+            }
+            else
+            {
+                Snackbar.Add(result.Error?.Message ?? "Logout failed", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add("An error occurred during logout", Severity.Error);
+        }
+        finally
+        {
+            _isLoading = false;
+            StateHasChanged();
+        }
+    }
+}

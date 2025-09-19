@@ -4,41 +4,52 @@ using Microsoft.AspNetCore.Authorization;
 namespace ProxyManagement.BlazorServer.Hubs;
 
 [Authorize]
-public class DashboardHub : Hub
+public class NotificationHub : Hub
 {
-    private readonly ILogger<DashboardHub> _logger;
+    private readonly ILogger<NotificationHub> _logger;
 
-    public DashboardHub(ILogger<DashboardHub> logger)
+    public NotificationHub(ILogger<NotificationHub> logger)
     {
         _logger = logger;
     }
 
-    public async Task JoinDashboardGroup(string dashboardType)
+    public async Task JoinUserGroup(string userId)
     {
-        var groupName = $"Dashboard_{dashboardType}";
+        var groupName = $"User_{userId}";
         await Groups.AddToGroupAsync(Context.ConnectionId, groupName);
         
         _logger.LogInformation(
-            "User {UserId} joined dashboard group {GroupName}",
+            "User {UserId} joined notification group {GroupName}",
             Context.UserIdentifier,
             groupName);
     }
 
-    public async Task LeaveDashboardGroup(string dashboardType)
+    public async Task LeaveUserGroup(string userId)
     {
-        var groupName = $"Dashboard_{dashboardType}";
+        var groupName = $"User_{userId}";
         await Groups.RemoveFromGroupAsync(Context.ConnectionId, groupName);
         
         _logger.LogInformation(
-            "User {UserId} left dashboard group {GroupName}",
+            "User {UserId} left notification group {GroupName}",
             Context.UserIdentifier,
             groupName);
+    }
+
+    public async Task MarkNotificationAsRead(string notificationId)
+    {
+        _logger.LogInformation(
+            "User {UserId} marked notification {NotificationId} as read",
+            Context.UserIdentifier,
+            notificationId);
+        
+        // Here you would typically update the notification status in the database
+        // and notify other clients if needed
     }
 
     public override async Task OnConnectedAsync()
     {
         _logger.LogInformation(
-            "User {UserId} connected to dashboard hub with connection {ConnectionId}",
+            "User {UserId} connected to notification hub with connection {ConnectionId}",
             Context.UserIdentifier,
             Context.ConnectionId);
         
@@ -50,13 +61,13 @@ public class DashboardHub : Hub
         if (exception != null)
         {
             _logger.LogError(exception,
-                "User {UserId} disconnected from dashboard hub with error",
+                "User {UserId} disconnected from notification hub with error",
                 Context.UserIdentifier);
         }
         else
         {
             _logger.LogInformation(
-                "User {UserId} disconnected from dashboard hub",
+                "User {UserId} disconnected from notification hub",
                 Context.UserIdentifier);
         }
         

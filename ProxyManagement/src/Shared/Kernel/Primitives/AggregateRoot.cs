@@ -1,15 +1,34 @@
+using MediatR;
+
 namespace ProxyManagement.Shared.Kernel.Primitives;
 
 public abstract class AggregateRoot<TId> : Entity<TId>
-    where TId : class
+    where TId : notnull
 {
-    private readonly List<IDomainEvent> _domainEvents = [];
+    private readonly List<INotification> _domainEvents = [];
 
-    protected AggregateRoot(TId id) : base(id) { }
+    protected AggregateRoot(TId id) : base(id)
+    {
+    }
 
-    public IReadOnlyList<IDomainEvent> DomainEvents => _domainEvents.AsReadOnly();
+    protected AggregateRoot()
+    {
+    }
 
-    protected void RaiseDomainEvent(IDomainEvent domainEvent) => _domainEvents.Add(domainEvent);
+    public IReadOnlyCollection<INotification> DomainEvents => _domainEvents.AsReadOnly();
 
-    public void ClearDomainEvents() => _domainEvents.Clear();
+    public void ClearDomainEvents()
+    {
+        _domainEvents.Clear();
+    }
+
+    protected void AddDomainEvent(INotification domainEvent)
+    {
+        _domainEvents.Add(domainEvent);
+    }
+
+    protected void RemoveDomainEvent(INotification domainEvent)
+    {
+        _domainEvents.Remove(domainEvent);
+    }
 }

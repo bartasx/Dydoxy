@@ -1,17 +1,68 @@
+using System.ComponentModel.DataAnnotations.Schema;
+
 namespace ProxyManagement.Shared.Kernel.Primitives;
 
 public abstract class Entity<TId> : IEquatable<Entity<TId>>
-    where TId : class
+    where TId : notnull
 {
-    public TId Id { get; protected init; }
+    protected Entity(TId id)
+    {
+        Id = id;
+    }
 
-    protected Entity(TId id) => Id = id;
+    protected Entity()
+    {
+    }
 
-    public bool Equals(Entity<TId>? other) => 
-        other is not null && Id.Equals(other.Id);
+    public TId Id { get; protected init; } = default!;
 
-    public override bool Equals(object? obj) => 
-        obj is Entity<TId> entity && Equals(entity);
+    public static bool operator ==(Entity<TId>? first, Entity<TId>? second)
+    {
+        return first is not null && second is not null && first.Equals(second);
+    }
 
-    public override int GetHashCode() => Id.GetHashCode();
+    public static bool operator !=(Entity<TId>? first, Entity<TId>? second)
+    {
+        return !(first == second);
+    }
+
+    public bool Equals(Entity<TId>? other)
+    {
+        if (other is null)
+        {
+            return false;
+        }
+
+        if (other.GetType() != GetType())
+        {
+            return false;
+        }
+
+        return EqualityComparer<TId>.Default.Equals(Id, other.Id);
+    }
+
+    public override bool Equals(object? obj)
+    {
+        if (obj is null)
+        {
+            return false;
+        }
+
+        if (obj.GetType() != GetType())
+        {
+            return false;
+        }
+
+        if (obj is not Entity<TId> entity)
+        {
+            return false;
+        }
+
+        return EqualityComparer<TId>.Default.Equals(Id, entity.Id);
+    }
+
+    public override int GetHashCode()
+    {
+        return EqualityComparer<TId>.Default.GetHashCode(Id) * 41;
+    }
 }

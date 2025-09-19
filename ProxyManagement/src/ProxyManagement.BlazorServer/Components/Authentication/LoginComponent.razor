@@ -1,0 +1,108 @@
+@using ProxyManagement.BlazorServer.Services.Authentication
+@using ProxyManagement.BlazorServer.Components.Base
+@inherits DydoxyComponentBase
+
+<MudContainer MaxWidth="MaxWidth.Small" Class="mt-16">
+    <MudPaper Elevation="4" Class="pa-8">
+        <MudText Typo="Typo.h4" Align="Align.Center" Class="mb-8">
+            <MudIcon Icon="Icons.Material.Filled.Security" Class="mr-2" />
+            Dydoxy Login
+        </MudText>
+
+        <EditForm Model="@_loginModel" OnValidSubmit="@HandleLoginAsync">
+            <DataAnnotationsValidator />
+            
+            <MudTextField @bind-Value="_loginModel.Email"
+                         Label="Email"
+                         Variant="Variant.Outlined"
+                         InputType="InputType.Email"
+                         Required="true"
+                         For="@(() => _loginModel.Email)"
+                         Class="mb-4" />
+
+            <MudTextField @bind-Value="_loginModel.Password"
+                         Label="Password"
+                         Variant="Variant.Outlined"
+                         InputType="InputType.Password"
+                         Required="true"
+                         For="@(() => _loginModel.Password)"
+                         Class="mb-4" />
+
+            <MudCheckBox @bind-Value="_loginModel.RememberMe"
+                        Label="Remember me"
+                        Class="mb-4" />
+
+            <MudButton ButtonType="ButtonType.Submit"
+                      Variant="Variant.Filled"
+                      Color="Color.Primary"
+                      Size="Size.Large"
+                      FullWidth="true"
+                      Disabled="@IsLoading"
+                      Class="mb-4">
+                @if (IsLoading)
+                {
+                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                }
+                Sign In
+            </MudButton>
+
+            @if (!string.IsNullOrEmpty(ErrorMessage))
+            {
+                <MudAlert Severity="Severity.Error" Class="mb-4">
+                    @ErrorMessage
+                </MudAlert>
+            }
+        </EditForm>
+
+        <MudDivider Class="my-4" />
+        
+        <MudText Align="Align.Center" Typo="Typo.body2" Class="mud-text-secondary">
+            Don't have an account? Contact your administrator.
+        </MudText>
+    </MudPaper>
+</MudContainer>
+
+@code {
+    [Inject] private CustomAuthenticationStateProvider AuthStateProvider { get; set; } = default!;
+    [Parameter] public string? ReturnUrl { get; set; }
+
+    private readonly LoginModel _loginModel = new();
+
+    private async Task HandleLoginAsync()
+    {
+        IsLoading = true;
+        ErrorMessage = null;
+        StateHasChanged();
+
+        try
+        {
+            var success = await AuthStateProvider.LoginAsync(_loginModel.Email, _loginModel.Password);
+            
+            if (success)
+            {
+                await ShowSuccessMessageAsync("Login successful!");
+                Navigation.NavigateTo(ReturnUrl ?? "/", true);
+            }
+            else
+            {
+                ErrorMessage = "Invalid email or password. Please try again.";
+            }
+        }
+        catch (Exception ex)
+        {
+            await HandleErrorAsync(ex);
+        }
+        finally
+        {
+            IsLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private class LoginModel
+    {
+        public string Email { get; set; } = string.Empty;
+        public string Password { get; set; } = string.Empty;
+        public bool RememberMe { get; set; }
+    }
+}

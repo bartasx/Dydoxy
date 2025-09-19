@@ -15,8 +15,9 @@ import (
 	"github.com/dydoxy/proxy-engine-go/internal/common/logging"
 	"github.com/dydoxy/proxy-engine-go/internal/proxy/socks5"
 	"github.com/dydoxy/proxy-engine-go/internal/proxy/http"
-	"	"github.com/dydoxy/proxy-engine-go/internal/security/filter"
-	"github.com/dydoxy/proxy-engine-go/internal/security/ratelimit""
+	"github.com/dydoxy/proxy-engine-go/internal/security/filter"
+	"github.com/dydoxy/proxy-engine-go/internal/security/ratelimit"
+	"github.com/dydoxy/proxy-engine-go/internal/security/ai"
 )
 
 func main() {
@@ -28,15 +29,118 @@ func main() {
 	
 	// Initialize Redis client
 	redisClient := redis.NewClient(&redis.Options{
-		Addr:     cfg.RedisAddr,
-		Password: cfg.RedisPassword,
-		DB:       cfg.RedisDB,
+		Addr:     cfg.Redis.Host + ":" + cfg.Redis.Port,
+		Password: cfg.Redis.Password,
+		DB:       cfg.Redis.DB,
 	})
 	
 	// Test Redis connection
 	ctx := context.Background()
 	if err := redisClient.Ping(ctx).Err(); err != nil {
 		logger.Fatalf("Failed to connect to Redis: %v", err)
+	}
+	
+	// Initialize AI threat detection system
+	aiStorage := ai.NewRedisStorage(redisClient, logger)
+	
+	// Initialize AI models
+	modelManager := ai.NewModelManager(aiStorage, logger)
+	
+	// Initialize feature extractors
+	basicExtractor := ai.NewFeatureExtractor(logger)
+	advancedExtractor := ai.NewAdvancedFeatureExtractor(logger)
+	
+	// Initialize behavioral analyzer
+	behavioralAnalyzer := ai.NewBehavioralAnalyzer(aiStorage, logger)
+	
+	// Initialize anomaly detector
+	anomalyDetector := ai.NewAnomalyDetector(logger)
+	
+	// Initialize content analysis model
+	contentModel := ai.NewContentAnalysisModel(logger)
+	if err := modelManager.RegisterModel("content_analysis", contentModel); err != nil {
+		logger.Warnf("Failed to register content analysis model: %v", err)
+	}
+	
+	// Initialize threat intelligence service
+	threatIntelligence := ai.NewThreatIntelligenceService(aiStorage, logger)
+	
+	// Initialize adaptive learning system
+	adaptiveLearning := ai.NewAdaptiveLearningSystem(modelManager, aiStorage, logger)
+	
+	// Initialize main AI threat detector
+	aiThreatDetector := ai.NewThreatDetector(&ai.ThreatDetectorConfig{
+		Enabled:                    cfg.AIThreatDetection.Enabled,
+		ContentAnalysisEnabled:     cfg.AIThreatDetection.ContentAnalysisEnabled,
+		BehavioralAnalysisEnabled:  cfg.AIThreatDetection.BehavioralAnalysisEnabled,
+		AnomalyDetectionEnabled:    cfg.AIThreatDetection.AnomalyDetectionEnabled,
+		ThreatIntelligenceEnabled:  cfg.AIThreatDetection.ThreatIntelligenceEnabled,
+		AdaptiveLearningEnabled:    cfg.AIThreatDetection.AdaptiveLearningEnabled,
+		ConfidenceThreshold:        cfg.AIThreatDetection.ConfidenceThreshold,
+		MaxProcessingTime:          time.Duration(cfg.AIThreatDetection.MaxProcessingTimeSeconds) * time.Second,
+		EnableRealTimeUpdates:      cfg.AIThreatDetection.EnableRealTimeUpdates,
+		ModelUpdateInterval:        time.Duration(cfg.AIThreatDetection.ModelUpdateIntervalHours) * time.Hour,
+	}, basicExtractor, advancedExtractor, behavioralAnalyzer, anomalyDetector, 
+	   threatIntelligence, adaptiveLearning, modelManager, logger)
+	
+	// Initialize AI-enhanced content filter
+	aiEnhancedFilter := ai.NewAIEnhancedContentFilter(contentFilter, aiThreatDetector, logger)
+	
+	// Initialize adaptive rate limiter
+	aiAdaptiveRateLimiter := ai.NewAIAdaptiveRateLimiter(multiLayerLimiter, aiThreatDetector, logger)
+	
+	// Initialize metrics collector
+	var metricsCollector *ai.MetricsCollector
+	if cfg.AIThreatDetection.MetricsEnabled {
+		metricsCollector = ai.NewMetricsCollector(logger)
+	}
+	
+	// Initialize health monitor
+	healthMonitor := ai.NewHealthMonitor(&ai.HealthMonitorConfig{
+		Enabled:         true,
+		CheckInterval:   30 * time.Second,
+		AlertThreshold:  0.8,
+		EnableAlerting:  cfg.AIThreatDetection.AlertingEnabled,
+	}, logger)
+	
+	// Initialize alert manager
+	var alertManager *ai.AlertManager
+	if cfg.AIThreatDetection.AlertingEnabled {
+		alertManager = ai.NewAlertManager(ai.GetDefaultAlertManagerConfig(), logger)
+	}
+	
+	// Initialize WebSocket hub for real-time monitoring
+	wsHub := ai.NewWebSocketHub(logger)
+	
+	// Start AI system components
+	if cfg.AIThreatDetectionEnabled {
+		// Start metrics collection
+		if metricsCollector != nil {
+			go metricsCollector.Start(ctx)
+		}
+		
+		// Start health monitoring
+		go healthMonitor.Start(ctx)
+		
+		// Start alert manager
+		if alertManager != nil {
+			if err := alertManager.Start(); err != nil {
+				logger.Warnf("Failed to start alert manager: %v", err)
+			}
+		}
+		
+		// Start WebSocket hub
+		go wsHub.Start()
+		
+		// Start adaptive learning
+		go adaptiveLearning.Start(ctx)
+		
+		// Start threat intelligence updates
+		go threatIntelligence.StartPeriodicUpdates(ctx)
+		
+		logger.Info("AI threat detection system initialized and started")
+	} else {
+		logger.Info("AI threat detection system is disabled")
 	}
 	
 	// Initialize content filtering
@@ -107,12 +211,28 @@ func main() {
 	// Setup HTTP API
 	r := gin.Default()
 	
-	// Add rate limiting middleware
-	rateLimitMiddleware := ratelimit.NewRateLimitMiddleware(multiLayerLimiter, logger, nil)
+	// Add AI security middleware (if enabled)
+	if cfg.AIThreatDetectionEnabled {
+		aiSecurityMiddleware := ai.NewAISecurityMiddleware(aiThreatDetector, logger)
+		r.Use(aiSecurityMiddleware.GinMiddleware())
+	}
+	
+	// Add adaptive rate limiting middleware (uses AI if enabled, otherwise falls back to regular)
+	var rateLimitMiddleware *ratelimit.RateLimitMiddleware
+	if cfg.AIThreatDetectionEnabled {
+		rateLimitMiddleware = ratelimit.NewRateLimitMiddleware(aiAdaptiveRateLimiter, logger, nil)
+	} else {
+		rateLimitMiddleware = ratelimit.NewRateLimitMiddleware(multiLayerLimiter, logger, nil)
+	}
 	r.Use(rateLimitMiddleware.GinMiddleware())
 	
-	// Add content filtering middleware
-	filterMiddleware := filter.NewMiddleware(contentFilter, logger)
+	// Add AI-enhanced content filtering middleware (uses AI if enabled, otherwise falls back to regular)
+	var filterMiddleware *filter.Middleware
+	if cfg.AIThreatDetectionEnabled {
+		filterMiddleware = filter.NewMiddleware(aiEnhancedFilter, logger)
+	} else {
+		filterMiddleware = filter.NewMiddleware(contentFilter, logger)
+	}
 	r.Use(filterMiddleware.GinMiddleware())
 	
 	// Health check endpoint
@@ -140,6 +260,67 @@ func main() {
 	userOrgGroup := r.Group("/api/v1/limits")
 	userOrgAPI.RegisterRoutes(userOrgGroup)
 	
+	// AI threat detection APIs (if enabled)
+	if cfg.AIThreatDetectionEnabled {
+		// AI threat detection API
+		aiThreatAPI := ai.NewThreatDetectionAPI(aiThreatDetector, modelManager, metricsCollector, logger)
+		aiGroup := r.Group("/api/v1/ai")
+		aiThreatAPI.RegisterRoutes(aiGroup)
+		
+		// WebSocket endpoint for real-time monitoring
+		r.GET("/ws/threats", wsHub.HandleWebSocket)
+		
+		// Health monitoring endpoint
+		r.GET("/api/v1/ai/health", func(c *gin.Context) {
+			status := healthMonitor.GetSystemStatus()
+			c.JSON(200, status)
+		})
+		
+		// Metrics endpoint (if enabled)
+		if metricsCollector != nil {
+			r.GET("/api/v1/ai/metrics", func(c *gin.Context) {
+				snapshot := metricsCollector.GetSnapshot()
+				c.JSON(200, snapshot)
+			})
+		}
+		
+		// Alert management endpoints (if enabled)
+		if alertManager != nil {
+			r.GET("/api/v1/ai/alerts", func(c *gin.Context) {
+				alerts := alertManager.GetActiveAlerts()
+				c.JSON(200, alerts)
+			})
+			
+			r.POST("/api/v1/ai/alerts/:id/acknowledge", func(c *gin.Context) {
+				alertID := c.Param("id")
+				acknowledgedBy := c.GetHeader("X-User-ID")
+				if acknowledgedBy == "" {
+					acknowledgedBy = "system"
+				}
+				
+				err := alertManager.AcknowledgeAlert(alertID, acknowledgedBy)
+				if err != nil {
+					c.JSON(400, gin.H{"error": err.Error()})
+					return
+				}
+				
+				c.JSON(200, gin.H{"status": "acknowledged"})
+			})
+			
+			r.POST("/api/v1/ai/alerts/:id/resolve", func(c *gin.Context) {
+				alertID := c.Param("id")
+				
+				err := alertManager.ResolveAlert(alertID)
+				if err != nil {
+					c.JSON(400, gin.H{"error": err.Error()})
+					return
+				}
+				
+				c.JSON(200, gin.H{"status": "resolved"})
+			})
+		}
+	}
+	
 	// Start services
 	go socks5Server.Start()
 	go httpProxy.Start()
@@ -166,11 +347,37 @@ func main() {
 	logger.Info("Shutting down server...")
 	
 	// Graceful shutdown
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	
-	if err := srv.Shutdown(ctx); err != nil {
+	if err := srv.Shutdown(shutdownCtx); err != nil {
 		logger.Fatal("Server forced to shutdown:", err)
+	}
+	
+	// Shutdown AI components if enabled
+	if cfg.AIThreatDetectionEnabled {
+		logger.Info("Shutting down AI threat detection system...")
+		
+		// Stop alert manager
+		if alertManager != nil {
+			if err := alertManager.Stop(); err != nil {
+				logger.Errorf("Error stopping alert manager: %v", err)
+			}
+		}
+		
+		// Stop WebSocket hub
+		wsHub.Stop()
+		
+		// Stop adaptive learning
+		adaptiveLearning.Stop()
+		
+		// Stop threat intelligence updates
+		threatIntelligence.Stop()
+		
+		// Stop health monitor
+		healthMonitor.Stop()
+		
+		logger.Info("AI threat detection system stopped")
 	}
 	
 	// Close Redis connection

@@ -1,0 +1,33 @@
+@page "/access-denied"
+
+<PageTitle>Access Denied - Dydoxy</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="mt-16">
+    <MudPaper Elevation="4" Class="pa-8 text-center">
+        <MudStack Spacing="4" AlignItems="AlignItems.Center">
+            <MudIcon Icon="Icons.Material.Filled.Block" 
+                     Size="Size.Large" 
+                     Color="Color.Error" 
+                     Style="font-size: 4rem;" />
+            
+            <MudText Typo="Typo.h4" Color="Color.Error">
+                Access Denied
+            </MudText>
+            
+            <MudText Typo="Typo.body1" Class="mb-4">
+                You don't have permission to access this resource.
+            </MudText>
+            
+            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                If you believe this is an error, please contact your administrator.
+            </MudText>
+            
+            <MudButton Variant="Variant.Filled" 
+                       Color="Color.Primary" 
+                       StartIcon="Icons.Material.Filled.Home"
+                       Href="/">
+                Go to Dashboard
+            </MudButton>
+        </MudStack>
+    </MudPaper>
+</MudContainer>

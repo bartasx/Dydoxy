@@ -1,0 +1,109 @@
+@using Microsoft.AspNetCore.Components.Authorization
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject IAuthenticationService AuthenticationService
+
+<AuthorizeView>
+    <Authorized>
+        <MudMenu Icon="Icons.Material.Filled.AccountCircle" 
+                 Color="Color.Inherit" 
+                 Direction="Direction.Bottom" 
+                 OffsetX="true">
+            <ChildContent>
+                <MudButton Variant="Variant.Text" 
+                           Color="Color.Inherit" 
+                           StartIcon="Icons.Material.Filled.AccountCircle">
+                    @if (_currentUser != null)
+                    {
+                        <span>@_currentUser.FullName</span>
+                    }
+                    else
+                    {
+                        <span>User</span>
+                    }
+                </MudButton>
+            </ChildContent>
+            <MenuItems>
+                <MudMenuItem Icon="Icons.Material.Filled.Person">
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                        <div>
+                            <MudText Typo="Typo.body2">
+                                @if (_currentUser != null)
+                                {
+                                    <strong>@_currentUser.FullName</strong>
+                                }
+                            </MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                @if (_currentUser != null)
+                                {
+                                    @_currentUser.Email
+                                }
+                            </MudText>
+                        </div>
+                    </MudStack>
+                </MudMenuItem>
+                
+                <MudDivider />
+                
+                <MudMenuItem Icon="Icons.Material.Filled.Settings" 
+                             Href="/profile">
+                    Profile Settings
+                </MudMenuItem>
+                
+                <MudMenuItem Icon="Icons.Material.Filled.Security" 
+                             Href="/security">
+                    Security
+                </MudMenuItem>
+                
+                <MudDivider />
+                
+                <MudMenuItem>
+                    <LogoutComponent />
+                </MudMenuItem>
+            </MenuItems>
+        </MudMenu>
+    </Authorized>
+    <NotAuthorized>
+        <MudButton Variant="Variant.Filled" 
+                   Color="Color.Primary" 
+                   StartIcon="Icons.Material.Filled.Login"
+                   Href="/login">
+            Login
+        </MudButton>
+    </NotAuthorized>
+</AuthorizeView>
+
+@code {
+    private UserInfo? _currentUser;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCurrentUser();
+        
+        // Subscribe to authentication state changes
+        AuthenticationStateProvider.AuthenticationStateChanged += OnAuthenticationStateChanged;
+    }
+
+    private async void OnAuthenticationStateChanged(Task<AuthenticationState> task)
+    {
+        await LoadCurrentUser();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task LoadCurrentUser()
+    {
+        try
+        {
+            var result = await AuthenticationService.GetCurrentUserAsync();
+            _currentUser = result.IsSuccess ? result.Value : null;
+        }
+        catch
+        {
+            _currentUser = null;
+        }
+    }
+
+    public void Dispose()
+    {
+        AuthenticationStateProvider.AuthenticationStateChanged -= OnAuthenticationStateChanged;
+    }
+}

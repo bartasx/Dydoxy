@@ -1,5 +1,6 @@
 @inherits LayoutView
 @using MudBlazor
+@using ProxyManagement.BlazorServer.Components.Authentication
 
 <MudThemeProvider />
 <MudPopoverProvider />
@@ -12,7 +13,7 @@
         <MudText Typo="Typo.h5" Class="ml-3">Dydoxy Proxy Management</MudText>
         <MudSpacer />
         <MudIconButton Icon="Icons.Material.Filled.Notifications" Color="Color.Inherit" />
-        <MudIconButton Icon="Icons.Material.Filled.AccountCircle" Color="Color.Inherit" />
+        <UserInfoComponent />
     </MudAppBar>
     
     <MudDrawer @bind-Open="@_drawerOpen" ClipMode="DrawerClipMode.Always" Elevation="2">

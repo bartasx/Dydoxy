@@ -1,0 +1,115 @@
+@page "/login"
+@using ProxyManagement.BlazorServer.Services.Authentication
+@using MudBlazor
+@inject IAuthenticationService AuthenticationService
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+
+<PageTitle>Login - Dydoxy</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Small" Class="mt-16">
+    <MudPaper Elevation="4" Class="pa-8">
+        <MudStack Spacing="4">
+            <MudText Typo="Typo.h4" Align="Align.Center" Class="mb-4">
+                <MudIcon Icon="Icons.Material.Filled.Security" Size="Size.Large" Class="mr-2" />
+                Dydoxy Login
+            </MudText>
+
+            <EditForm Model="@_loginModel" OnValidSubmit="@HandleLogin">
+                <DataAnnotationsValidator />
+                
+                <MudStack Spacing="3">
+                    <MudTextField @bind-Value="_loginModel.Email"
+                                  Label="Email"
+                                  Variant="Variant.Outlined"
+                                  InputType="InputType.Email"
+                                  Required="true"
+                                  For="@(() => _loginModel.Email)"
+                                  Disabled="@_isLoading" />
+
+                    <MudTextField @bind-Value="_loginModel.Password"
+                                  Label="Password"
+                                  Variant="Variant.Outlined"
+                                  InputType="InputType.Password"
+                                  Required="true"
+                                  For="@(() => _loginModel.Password)"
+                                  Disabled="@_isLoading" />
+
+                    <MudButton ButtonType="ButtonType.Submit"
+                               Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               Size="Size.Large"
+                               FullWidth="true"
+                               Disabled="@_isLoading">
+                        @if (_isLoading)
+                        {
+                            <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                            <span>Signing in...</span>
+                        }
+                        else
+                        {
+                            <span>Sign In</span>
+                        }
+                    </MudButton>
+                </MudStack>
+            </EditForm>
+
+            <MudDivider />
+
+            <MudText Typo="Typo.caption" Align="Align.Center" Class="mt-4">
+                Demo credentials: admin@dydoxy.com / password
+            </MudText>
+        </MudStack>
+    </MudPaper>
+</MudContainer>
+
+@code {
+    private readonly LoginModel _loginModel = new();
+    private bool _isLoading = false;
+
+    [Parameter, SupplyParameterFromQuery]
+    public string? ReturnUrl { get; set; }
+
+    private async Task HandleLogin()
+    {
+        _isLoading = true;
+        StateHasChanged();
+
+        try
+        {
+            var result = await AuthenticationService.AuthenticateAsync(_loginModel.Email, _loginModel.Password);
+            
+            if (result.IsSuccess)
+            {
+                Snackbar.Add("Login successful!", Severity.Success);
+                
+                var returnUrl = ReturnUrl ?? "/";
+                Navigation.NavigateTo(returnUrl, forceLoad: true);
+            }
+            else
+            {
+                Snackbar.Add(result.Error?.Message ?? "Login failed", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add("An unexpected error occurred", Severity.Error);
+        }
+        finally
+        {
+            _isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    public class LoginModel
+    {
+        [Required(ErrorMessage = "Email is required")]
+        [EmailAddress(ErrorMessage = "Invalid email format")]
+        public string Email { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Password is required")]
+        [MinLength(6, ErrorMessage = "Password must be at least 6 characters")]
+        public string Password { get; set; } = string.Empty;
+    }
+}
