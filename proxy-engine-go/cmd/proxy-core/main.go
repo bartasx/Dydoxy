@@ -59,9 +59,18 @@ func main() {
 	bucketStorage := ratelimit.NewRedisBucketStorage(redisClient)
 	bucketManager := ratelimit.NewTokenBucketManager(bucketStorage, logger)
 	
+	// Initialize user/org limit management
+	userOrgStorage := ratelimit.NewRedisUserOrgLimitStorage(redisClient)
+	userOrgManager := ratelimit.NewUserOrgLimitManager(userOrgStorage, bucketManager, logger)
+	
 	// Create default rate limit configurations
 	if err := createDefaultRateLimitConfigs(ctx, bucketManager, logger); err != nil {
 		logger.Warnf("Failed to create default rate limit configs: %v", err)
+	}
+	
+	// Create default user/org limits
+	if err := createDefaultUserOrgLimits(ctx, userOrgManager, logger); err != nil {
+		logger.Warnf("Failed to create default user/org limits: %v", err)
 	}
 	
 	// Initialize multi-layer rate limiter
@@ -71,6 +80,10 @@ func main() {
 	multiLayerLimiter.AddStrategy(ratelimit.NewPerUserStrategy("default_user"))
 	multiLayerLimiter.AddStrategy(ratelimit.NewPerIPStrategy("default_ip"))
 	multiLayerLimiter.AddStrategy(ratelimit.NewPerOrgStrategy("default_org"))
+	
+	// Add user/org aware strategies
+	multiLayerLimiter.AddStrategy(ratelimit.NewUserOrgAwareStrategy(userOrgManager, ratelimit.LimitTypeRequestsPerHour))
+	multiLayerLimiter.AddStrategy(ratelimit.NewHierarchicalStrategy(userOrgManager, ratelimit.LimitTypeRequestsPerDay))
 	
 	// Load existing rules
 	if err := contentFilter.ReloadRules(ctx); err != nil {
@@ -121,6 +134,11 @@ func main() {
 	rateLimitAPI := ratelimit.NewRateLimitAPI(bucketManager, multiLayerLimiter, bucketStorage, logger)
 	rateLimitGroup := r.Group("/api/v1/ratelimit")
 	rateLimitAPI.RegisterRoutes(rateLimitGroup)
+	
+	// User/Org limits API
+	userOrgAPI := ratelimit.NewUserOrgLimitAPI(userOrgManager, logger)
+	userOrgGroup := r.Group("/api/v1/limits")
+	userOrgAPI.RegisterRoutes(userOrgGroup)
 	
 	// Start services
 	go socks5Server.Start()
@@ -291,6 +309,84 @@ func createDefaultRateLimitConfigs(ctx context.Context, manager *ratelimit.Token
 		} else {
 			logger.Infof("Created rate limit config: %s (capacity=%d, refill_rate=%d)", 
 				name, config.Capacity, config.RefillRate)
+		}
+	}
+	
+	return nil
+}//
+ createDefaultUserOrgLimits creates default user and organization limits
+func createDefaultUserOrgLimits(ctx context.Context, manager *ratelimit.UserOrgLimitManager, logger *logging.Logger) error {
+	// Create sample user limits
+	sampleUserLimits := []*ratelimit.UserLimits{
+		{
+			UserID:           "demo_user_free",
+			OrgID:            "demo_org",
+			Tier:             "free",
+			RequestsPerHour:  100,
+			RequestsPerDay:   1000,
+			RequestsPerMonth: 10000,
+			BandwidthPerDay:  100 * 1024 * 1024,  // 100MB
+			BandwidthPerMonth: 1024 * 1024 * 1024, // 1GB
+			ConcurrentConns:  5,
+			Enabled:          true,
+		},
+		{
+			UserID:           "demo_user_premium",
+			OrgID:            "demo_org",
+			Tier:             "premium",
+			RequestsPerHour:  10000,
+			RequestsPerDay:   100000,
+			RequestsPerMonth: 1000000,
+			BandwidthPerDay:  10 * 1024 * 1024 * 1024,   // 10GB
+			BandwidthPerMonth: 100 * 1024 * 1024 * 1024,  // 100GB
+			ConcurrentConns:  100,
+			Enabled:          true,
+		},
+	}
+	
+	for _, limits := range sampleUserLimits {
+		if err := manager.SetUserLimits(ctx, limits); err != nil {
+			logger.Errorf("Failed to create sample user limits for %s: %v", limits.UserID, err)
+		} else {
+			logger.Infof("Created sample user limits: %s (tier: %s)", limits.UserID, limits.Tier)
+		}
+	}
+	
+	// Create sample org limits
+	sampleOrgLimits := []*ratelimit.OrgLimits{
+		{
+			OrgID:            "demo_org",
+			Plan:             "business",
+			RequestsPerHour:  50000,
+			RequestsPerDay:   500000,
+			RequestsPerMonth: 5000000,
+			BandwidthPerDay:  50 * 1024 * 1024 * 1024,   // 50GB
+			BandwidthPerMonth: 500 * 1024 * 1024 * 1024,  // 500GB
+			MaxUsers:         100,
+			MaxConcurrentConns: 1000,
+			Features:         []string{"advanced_analytics", "priority_support", "custom_rules"},
+			Enabled:          true,
+		},
+		{
+			OrgID:            "enterprise_org",
+			Plan:             "enterprise",
+			RequestsPerHour:  500000,
+			RequestsPerDay:   5000000,
+			RequestsPerMonth: 50000000,
+			BandwidthPerDay:  500 * 1024 * 1024 * 1024,  // 500GB
+			BandwidthPerMonth: 5000 * 1024 * 1024 * 1024, // 5TB
+			MaxUsers:         1000,
+			MaxConcurrentConns: 10000,
+			Features:         []string{"full_analytics", "24x7_support", "custom_rules", "white_label", "sla"},
+			Enabled:          true,
+		},
+	}
+	
+	for _, limits := range sampleOrgLimits {
+		if err := manager.SetOrgLimits(ctx, limits); err != nil {
+			logger.Errorf("Failed to create sample org limits for %s: %v", limits.OrgID, err)
+		} else {
+			logger.Infof("Created sample org limits: %s (plan: %s)", limits.OrgID, limits.Plan)
 		}
 	}
 	
